@@ -1,0 +1,6 @@
+# Genererte figurer
+*.png
+
+# Python
+__pycache__/
+*.pyc

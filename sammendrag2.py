@@ -5,9 +5,13 @@ Sammendraget følger retningslinjene i CLAUDE.md:
 - punktform på bokmål
 - maksimalt tre punkter
 - inkluderer alltid største og minste verdi fra dataene
+
+I tillegg lages en enkel linjediagram-figur av kvartalstallene, lagret
+som en PNG-fil.
 """
 
 import csv
+import os
 import sys
 
 
@@ -50,6 +54,36 @@ def lag_sammendrag(kvartaler, rader):
     ]
 
 
+def lag_figur(kvartaler, rader, filnavn):
+    """Lager et enkelt linjediagram av kvartalstallene og lagrer det som PNG.
+
+    Én linje per region. Returnerer filnavnet ved suksess, ellers None
+    (for eksempel hvis matplotlib ikke er installert)."""
+    try:
+        import matplotlib
+        matplotlib.use("Agg")  # headless-backend, krever ingen skjerm
+        import matplotlib.pyplot as plt
+    except ImportError:
+        print("(Hopper over figur: matplotlib er ikke installert – "
+              "kjør 'pip install matplotlib')")
+        return None
+
+    fig, ax = plt.subplots(figsize=(8, 5))
+    for region, tall in rader:
+        ax.plot(kvartaler, tall, marker="o", label=region)
+
+    ax.set_title("Kvartalstall per region")
+    ax.set_xlabel("Kvartal")
+    ax.set_ylabel("Verdi")
+    ax.grid(True, linestyle="--", alpha=0.4)
+    ax.legend(title="Region")
+    fig.tight_layout()
+
+    fig.savefig(filnavn, dpi=150)
+    plt.close(fig)
+    return filnavn
+
+
 def main():
     filnavn = sys.argv[1] if len(sys.argv) > 1 else "kvartalstall2.csv"
     kvartaler, rader = les_data(filnavn)
@@ -57,6 +91,11 @@ def main():
     print(f"Sammendrag (fil: {filnavn})")
     for punkt in lag_sammendrag(kvartaler, rader):
         print(f"- {punkt}")
+
+    figurfil = os.path.splitext(filnavn)[0] + ".png"
+    lagret = lag_figur(kvartaler, rader, figurfil)
+    if lagret:
+        print(f"Figur lagret: {lagret}")
 
 
 if __name__ == "__main__":
