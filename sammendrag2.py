@@ -54,32 +54,76 @@ def lag_sammendrag(kvartaler, rader):
     ]
 
 
-def lag_figur(kvartaler, rader, filnavn):
-    """Lager et enkelt linjediagram av kvartalstallene og lagrer det som PNG.
+# FIN supplerende designprofil – fargepalett (primærfarger først).
+# Linjediagram: maks fire linjer, mørkeblå er primær.
+FIN_PALETTE = [
+    "#181c62",  # mørkeblå
+    "#4156a6",  # mellomblå
+    "#5b91cc",  # lyseblå
+    "#f15d61",  # rød
+]
 
-    Én linje per region. Returnerer filnavnet ved suksess, ellers None
-    (for eksempel hvis matplotlib ikke er installert)."""
+
+def lag_figur(kvartaler, rader, filnavn):
+    """Lager et linjediagram av kvartalstallene etter FINs designprofil.
+
+    Én linje per region (maks fire). Returnerer filnavnet ved suksess,
+    ellers None (for eksempel hvis matplotlib ikke er installert)."""
     try:
+        import logging
         import matplotlib
         matplotlib.use("Agg")  # headless-backend, krever ingen skjerm
         import matplotlib.pyplot as plt
+        # Arial foretrekkes (FIN-profil), men mangler den, faller vi stille
+        # tilbake til DejaVu Sans i stedet for å spamme advarsler.
+        logging.getLogger("matplotlib.font_manager").setLevel(logging.ERROR)
     except ImportError:
         print("(Hopper over figur: matplotlib er ikke installert – "
               "kjør 'pip install matplotlib')")
         return None
 
-    fig, ax = plt.subplots(figsize=(8, 5))
-    for region, tall in rader:
-        ax.plot(kvartaler, tall, marker="o", label=region)
+    # FIN-profil: Arial-font, hvit bakgrunn, tynne sorte akser, ingen grid.
+    plt.rcParams.update({
+        "font.family": ["Arial", "DejaVu Sans", "sans-serif"],
+        "font.size": 10,
+        "figure.facecolor": "white",
+        "axes.facecolor": "white",
+        "axes.edgecolor": "#000000",
+        "axes.linewidth": 0.5,
+        "axes.spines.top": False,
+        "axes.spines.right": True,   # y-akse på begge sider
+        "xtick.direction": "in",     # tickmarks peker inn mot figuren
+        "ytick.direction": "in",
+        "xtick.major.size": 0,       # ingen tickmarks på x-aksen
+        "ytick.major.size": 3,
+        "xtick.labelsize": 9,
+        "ytick.labelsize": 9,
+        "lines.linewidth": 1.5,
+        "lines.solid_capstyle": "round",
+    })
 
-    ax.set_title("Kvartalstall per region")
+    fig, ax = plt.subplots(figsize=(8, 5))
+    for i, (region, tall) in enumerate(rader):
+        farge = FIN_PALETTE[i % len(FIN_PALETTE)]
+        ax.plot(kvartaler, tall, marker="o", color=farge, label=region)
+
+    # Ingen tittel/kilde inne i figuren (FIN-konvensjon). Enheten står som
+    # en liten merkelapp øverst ved y-aksen.
     ax.set_xlabel("Kvartal")
     ax.set_ylabel("Verdi")
-    ax.grid(True, linestyle="--", alpha=0.4)
-    ax.legend(title="Region")
-    fig.tight_layout()
 
-    fig.savefig(filnavn, dpi=150)
+    # Speil y-aksen til høyre side med innovervendte tickmarks.
+    ax2 = ax.twinx()
+    ax2.set_ylim(ax.get_ylim())
+    ax2.set_yticks(ax.get_yticks())
+    ax2.tick_params(axis="y", direction="in", length=3, colors="#000000")
+    ax2.spines["top"].set_visible(False)
+
+    # Tegnforklaring under diagrammet, full bredde.
+    ax.legend(loc="upper center", bbox_to_anchor=(0.5, -0.12),
+              ncol=len(rader), frameon=False)
+
+    fig.savefig(filnavn, dpi=150, bbox_inches="tight")
     plt.close(fig)
     return filnavn
 
